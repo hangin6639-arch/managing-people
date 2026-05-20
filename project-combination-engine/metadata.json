@@ -1,8 +1,0 @@
-{
-  "name": "Project Combination Engine",
-  "description": "토스 스타일 테마의 전략적 인적자원 네트워크 시각화 및 조합 분석 서비스",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}
