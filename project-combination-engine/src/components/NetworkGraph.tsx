@@ -25,7 +25,8 @@ export const NetworkGraph: React.FC = () => {
     links: globalLinks, 
     selectedNode, 
     setSelectedNode,
-    theme 
+    theme,
+    coreNodeId
   } = useNetwork();
   
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,8 +74,8 @@ export const NetworkGraph: React.FC = () => {
       return globalNodes.map((gNode) => {
         const existing = prevSimNodes.find(p => p.id === gNode.id);
         
-        // "Me" (현지훈) is locked at the center to act as the gravitational anchor
-        const isCoreMe = gNode.id === '현지훈';
+        // The signed-in user's node is locked at the center.
+        const isCoreMe = gNode.id === coreNodeId;
         
         if (existing) {
           return {
@@ -100,7 +101,7 @@ export const NetworkGraph: React.FC = () => {
         }
       });
     });
-  }, [globalNodes, dimensions.width, dimensions.height]);
+  }, [globalNodes, dimensions.width, dimensions.height, coreNodeId]);
 
   // Main custom spring physics simulation loop (runs at 60 FPS while active)
   useEffect(() => {
@@ -269,7 +270,7 @@ export const NetworkGraph: React.FC = () => {
 
   // Node visual sizing based on coordination "Energy Cost": lower energy cost means higher accessibility & larger nodes!
   const getNodeRadius = (node: TalentNode) => {
-    if (node.id === '현지훈') return 28; // Centered Core
+    if (node.id === coreNodeId) return 28; // Centered Core
     // Cost 1 -> radius 21, Cost 5 -> radius 16
     const base = 22;
     const diff = (5 - node.energyCost) * 1.5;
@@ -279,7 +280,7 @@ export const NetworkGraph: React.FC = () => {
   // Drag handlers
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
-    if (nodeId === '현지훈') return; // Cannot drag centered core
+    if (nodeId === coreNodeId) return; // Cannot drag centered core
     
     setDraggedNodeId(nodeId);
     setSimNodes(prev => prev.map(n => {
@@ -411,7 +412,7 @@ export const NetworkGraph: React.FC = () => {
               >
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: style.fill }}></div>
                 <span className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400">
-                  {grp === 'Me' ? '나 (현지훈)' : grp}
+                  {grp === 'Me' ? `나 (${coreNodeId})` : grp}
                 </span>
                 <span className="text-[9px] font-mono font-bold text-slate-300 dark:text-zinc-650">
                   {count}
@@ -456,7 +457,7 @@ export const NetworkGraph: React.FC = () => {
           <g transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoom})`}>
             
             {/* 1. Core 'Me' Ambient Pulse Ripple Rings */}
-            {simNodes.filter(n => n.id === '현지훈').map((me) => (
+            {simNodes.filter(n => n.id === coreNodeId).map((me) => (
               <g key="me-rippler" className="pointer-events-none">
                 <circle
                   cx={me.x}
@@ -545,7 +546,7 @@ export const NetworkGraph: React.FC = () => {
                       setSelectedNode(node);
                     }}
                     style={{
-                      cursor: node.id === '현지훈' ? 'pointer' : (node.isDragging ? 'grabbing' : 'grab')
+                      cursor: node.id === coreNodeId ? 'pointer' : (node.isDragging ? 'grabbing' : 'grab')
                     }}
                   />
 
@@ -569,7 +570,7 @@ export const NetworkGraph: React.FC = () => {
                   </text>
 
                   {/* Tiny accessibility badge indicating energy cost level */}
-                  {node.id !== '현지훈' && (
+                  {node.id !== coreNodeId && (
                     <g transform={`translate(${r - 3}, ${-r + 3})`} className="pointer-events-none">
                       <circle
                         r="6.5"
@@ -592,7 +593,7 @@ export const NetworkGraph: React.FC = () => {
           </g>
         </svg>
 
-        {/* 4. Overlay Empty Graph State Hint (when only '현지훈' is present) */}
+        {/* 4. Overlay Empty Graph State Hint */}
         {simNodes.length <= 1 && (
           <div className="absolute inset-0 bg-white/40 dark:bg-black/30 backdrop-blur-3xs flex items-center justify-center p-6 text-center pointer-events-none">
             <div className="max-w-xs bg-white/95 dark:bg-zinc-800/95 p-4 rounded-3xl shadow-lg border border-slate-50 dark:border-zinc-850 transform translate-y-16 pointer-events-auto">
@@ -601,7 +602,7 @@ export const NetworkGraph: React.FC = () => {
                 1인 네트워크 상태예요
               </h5>
               <p className="text-[11px] text-slate-400 dark:text-zinc-400 mt-1 leading-relaxed">
-                우측 하단의 <span className="font-semibold text-blue-500 font-mono">+</span> 버튼을 눌러 피어를 추가하고 '현지훈'님과의 기여/협업 관계망을 입체화해보세요.
+                우측 하단의 <span className="font-semibold text-blue-500 font-mono">+</span> 버튼을 눌러 피어를 추가하고 {coreNodeId}님과의 기여/협업 관계망을 입체화해보세요.
               </p>
             </div>
           </div>

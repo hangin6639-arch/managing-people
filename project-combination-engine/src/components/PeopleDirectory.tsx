@@ -25,18 +25,17 @@ interface PeopleDirectoryProps {
 }
 
 export const PeopleDirectory: React.FC<PeopleDirectoryProps> = ({ onOpenAddModal }) => {
-  const { nodes, links, setSelectedNode, addNode } = useNetwork();
+  const { nodes, links, setSelectedNode, addNode, coreNodeId } = useNetwork();
   
   const [search, setSearch] = useState('');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('All');
 
-  // Filter out core "현지훈" from standard empty state triggers if user expects other people.
-  // We'll show "현지훈 (나)" always in the list, but if he is the ONLY ONE, we show a gorgeous starter helper.
-  const externalNodes = nodes.filter(n => n.id !== '현지훈');
+  // Keep the signed-in user's core node visible while treating it as the starter state.
+  const externalNodes = nodes.filter(n => n.id !== coreNodeId);
 
   const handleImportSample = () => {
     // Generate template
-    const template = getMarkdownTemplate(['현지훈']);
+    const template = getMarkdownTemplate([coreNodeId]);
     const parsed = parseMarkdownToTalent(template);
     if (parsed.node.id) {
       addNode(parsed.node as TalentNode, parsed.connection);

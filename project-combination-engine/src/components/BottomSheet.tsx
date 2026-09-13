@@ -33,7 +33,8 @@ export const BottomSheet: React.FC = () => {
     nodes,
     addLink,
     deleteLink,
-    theme 
+    theme,
+    coreNodeId
   } = useNetwork();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -88,8 +89,8 @@ export const BottomSheet: React.FC = () => {
   };
 
   const handleDelete = () => {
-    if (selectedNode.id === '현지훈') {
-      alert('코어 연결 노드 "현지훈(나)"은 삭제할 수 없어요.');
+    if (selectedNode.id === coreNodeId) {
+      alert('내 프로필은 네트워크에서 삭제할 수 없어요.');
       return;
     }
     if (window.confirm(`정말 ${selectedNode.id}님을 네트워크에서 도출하시겠습니까? 관련 연결선도 모두 삭제됩니다.`)) {
@@ -178,7 +179,7 @@ export const BottomSheet: React.FC = () => {
                     <span>정보 수정</span>
                   </button>
                   
-                  {selectedNode.id !== '현지훈' && (
+                  {selectedNode.id !== coreNodeId && (
                     <button
                       onClick={handleDelete}
                       className="p-2.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-[#2C191D] rounded-xl transition-colors cursor-pointer"

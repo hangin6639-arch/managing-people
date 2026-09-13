@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TalentNode, TalentLink, ActiveTab, Graph } from '../types';
+import { useAuth } from './AuthContext';
 
 interface NetworkContextType {
   nodes: TalentNode[];
@@ -31,99 +32,50 @@ interface NetworkContextType {
   setActiveTab: (tab: ActiveTab) => void;
   toggleTheme: () => void;
   resetAll: () => void;
+  coreNodeId: string;
+  planError: string | null;
+  clearPlanError: () => void;
 }
 
 const NetworkContext = createContext<NetworkContextType | undefined>(undefined);
 
-const INITIAL_NODES: TalentNode[] = [
-  {
-    id: "현지훈",
+const initialNode = (name: string): TalentNode => ({
+    id: name,
     group: "Me",
-    fields: ["HR전략", "프로덕트 총괄", "조합 엔진"],
-    fact: "• 전략적 인적자원 네트워크(Project Combination Engine) 기획자\n• 토스(Toss) 스타일 UX 기획 및 설계 리더",
-    interpretation: "• 주관과 조화의 탁월한 감각을 지닌 아키텍트\n• 복잡한 휴먼 관계망을 최적의 비즈니스 시너지로 도식화하는 문제 해결사",
-    strategicFit: "본 네트워크의 중추이자 허브(Hub)입니다. 모든 자원의 성장에너지와 시너지 효과를 분석하는 오케스트레이터 역할을 수행합니다.",
+    fields: [],
+    fact: "내 프로필입니다. 카드를 열어 이력과 관심 분야를 입력해보세요.",
+    interpretation: "",
+    strategicFit: "이 네트워크의 중심 인물입니다.",
     energyCost: 1,
-  }
-];
+});
 
 export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [graphs, setGraphs] = useState<Graph[]>(() => {
-    const savedGraphs = localStorage.getItem('toss_talent_graphs');
-    if (savedGraphs) {
-      try {
-        const parsed = JSON.parse(savedGraphs);
-        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) {
-        console.error("Error reading graphs localstorage", e);
-      }
-    }
-
-    // Migration logic for old data
-    const legacyNodes = localStorage.getItem('toss_talent_nodes');
-    const legacyLinks = localStorage.getItem('toss_talent_links');
-    if (legacyNodes) {
-      try {
-        const parsedNodes = JSON.parse(legacyNodes);
-        const parsedLinks = legacyLinks ? JSON.parse(legacyLinks) : [];
-        if (Array.isArray(parsedNodes) && parsedNodes.length > 0) {
-          return [
-            {
-              id: 'legacy-main',
-              name: '종합 네트워크',
-              nodes: parsedNodes,
-              links: parsedLinks
-            }
-          ];
-        }
-      } catch (e) {
-        console.error("Migration error", e);
-      }
-    }
-
-    // Default template graphs
-    return [
-      {
-        id: 'default-school',
-        name: '학교',
-        nodes: INITIAL_NODES,
-        links: []
-      },
-      {
-        id: 'default-project',
-        name: '해커톤',
-        nodes: [
-          {
-            id: "현지훈",
-            group: "Me",
-            fields: ["HR전략", "프로덕트 총괄", "조합 엔진"],
-            fact: "• 전략적 인적자원 네트워크(Project Combination Engine) 기획자\n• 토스(Toss) 스타일 UX 기획 및 설계 리더",
-            interpretation: "• 주관과 조화의 탁월한 감각을 지닌 아키텍트\n• 복잡한 휴먼 관계망을 최적의 비즈니스 시너지로 도식화하는 문제 해결사",
-            strategicFit: "본 네트워크의 중추이자 허브(Hub)입니다. 모든 자원의 성장에너지와 시너지 효과를 분석하는 오케스트레이터 역할을 수행합니다.",
-            energyCost: 1,
-          }
-        ],
-        links: []
-      }
-    ];
+  const { user } = useAuth();
+  const coreNodeId = user!.name;
+  const [graphs, setGraphs] = useState<Graph[]>([{ id: 'default-network', name: '내 네트워크', nodes: [initialNode(coreNodeId)], links: [] }]);
+  const [vaultLoaded, setVaultLoaded] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const personalizeGraphs = (items: Graph[]): Graph[] => items.map(graph => {
+    const previousCore = graph.nodes.find(node => node.group === 'Me')?.id;
+    if (!previousCore || previousCore === coreNodeId) return graph;
+    return {
+      ...graph,
+      nodes: graph.nodes.map(node => node.id === previousCore ? { ...node, id: coreNodeId } : node),
+      links: graph.links.map(link => ({
+        ...link,
+        source: link.source === previousCore ? coreNodeId : link.source,
+        target: link.target === previousCore ? coreNodeId : link.target,
+      })),
+    };
   });
 
-  const [activeGraphId, setActiveGraphId] = useState<string>(() => {
-    const savedActive = localStorage.getItem('toss_talent_active_graph_id');
-    if (savedActive) {
-      return savedActive;
-    }
-    // Default to first graph
-    return 'default-school';
-  });
+  const [activeGraphId, setActiveGraphId] = useState<string>('default-network');
 
   // Derived current nodes and links
   const activeGraph = graphs.find(g => g.id === activeGraphId) || graphs[0] || {
     id: 'fallback',
     name: '기본 네트워크',
-    nodes: INITIAL_NODES,
+    nodes: [initialNode(coreNodeId)],
     links: []
   };
 
@@ -147,14 +99,22 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Sync to localstorage
+  // Load the signed-in user's encrypted server vault. Existing browser data is migrated once.
   useEffect(() => {
-    localStorage.setItem('toss_talent_graphs', JSON.stringify(graphs));
-  }, [graphs]);
+    fetch('/api/vault').then(async response => { if (!response.ok) throw new Error(); return response.json(); }).then(vault => {
+      const legacyRaw = localStorage.getItem('toss_talent_graphs');
+      const legacy = legacyRaw ? JSON.parse(legacyRaw) : null;
+      if (Array.isArray(vault.graphs) && vault.graphs.length) { setGraphs(personalizeGraphs(vault.graphs)); setActiveGraphId(vault.activeGraphId || vault.graphs[0].id); }
+      else if (Array.isArray(legacy) && legacy.length) { setGraphs(personalizeGraphs(legacy)); setActiveGraphId(legacy[0].id); }
+      localStorage.removeItem('toss_talent_graphs'); localStorage.removeItem('toss_talent_nodes'); localStorage.removeItem('toss_talent_links'); localStorage.removeItem('toss_talent_active_graph_id');
+    }).catch(() => setPlanError('저장된 네트워크를 불러오지 못했습니다.')).finally(() => setVaultLoaded(true));
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('toss_talent_active_graph_id', activeGraphId);
-  }, [activeGraphId]);
+    if (!vaultLoaded) return;
+    const timer = window.setTimeout(() => fetch('/api/vault', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ graphs, activeGraphId }) }).then(async response => { if (!response.ok) { const body = await response.json(); throw new Error(body.error); } }).catch(error => setPlanError(error.message || '변경 내용을 저장하지 못했습니다.')), 350);
+    return () => window.clearTimeout(timer);
+  }, [graphs, activeGraphId, vaultLoaded]);
 
   useEffect(() => {
     localStorage.setItem('toss_talent_theme', theme);
@@ -172,21 +132,12 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Add Graph action
   const addGraph = (name: string): string => {
+    if (graphs.length >= user!.limits.graphs) { setPlanError(`Free 요금제에서는 네트워크를 ${user!.limits.graphs}개까지 만들 수 있습니다.`); return ''; }
     const newId = `graph-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const newGraph: Graph = {
       id: newId,
       name,
-      nodes: [
-        {
-          id: "현지훈",
-          group: "Me",
-          fields: ["HR전략", "프로덕트 총괄", "조합 엔진"],
-          fact: "• 전략적 인적자원 네트워크(Project Combination Engine) 기획자\n• 토스(Toss) 스타일 UX 기획 및 설계 리더",
-          interpretation: "• 주관과 조화의 탁월한 감각을 지닌 아키텍트\n• 복잡한 휴먼 관계망을 최적의 비즈니스 시너지로 도식화하는 문제 해결사",
-          strategicFit: "본 네트워크의 중추이자 허브(Hub)입니다. 모든 자원의 성장에너지와 시너지 효과를 분석하는 오케스트레이터 역할을 수행합니다.",
-          energyCost: 1,
-        }
-      ],
+      nodes: [initialNode(coreNodeId)],
       links: []
     };
     setGraphs(prev => [...prev, newGraph]);
@@ -201,9 +152,9 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (filtered.length === 0) {
         return [
           {
-            id: 'default-school',
-            name: '학교',
-            nodes: INITIAL_NODES,
+            id: 'default-network',
+            name: '내 네트워크',
+            nodes: [initialNode(coreNodeId)],
             links: []
           }
         ];
@@ -217,7 +168,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (remaining.length > 0) {
           setActiveGraphId(remaining[0].id);
         } else {
-          setActiveGraphId('default-school');
+          setActiveGraphId('default-network');
         }
         return current;
       });
@@ -240,6 +191,8 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
     targetGraphId?: string
   ): boolean => {
     const destGraphId = targetGraphId || activeGraphId;
+    const destination = graphs.find(graph => graph.id === destGraphId);
+    if (destination && destination.nodes.length >= user!.limits.peoplePerGraph) { setPlanError(`현재 요금제에서는 네트워크당 인물을 ${user!.limits.peoplePerGraph}명까지 저장할 수 있습니다.`); return false; }
     let duplicated = false;
 
     setGraphs(prev => prev.map(g => {
@@ -301,7 +254,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteNode = (id: string) => {
-    if (id === '현지훈') return; // Cannot delete core user node!
+    if (id === coreNodeId) return;
     
     setGraphs(prev => prev.map(g => {
       if (g.id === activeGraphId) {
@@ -367,7 +320,7 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (g.id === activeGraphId) {
         return {
           ...g,
-          nodes: INITIAL_NODES.map(node => ({
+          nodes: [initialNode(coreNodeId)].map(node => ({
             ...node,
             x: window.innerWidth / 2 + (Math.random() - 0.5) * 100,
             y: window.innerHeight / 2 + (Math.random() - 0.5) * 100,
@@ -403,6 +356,9 @@ export const NetworkProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setActiveTab,
       toggleTheme,
       resetAll,
+      coreNodeId,
+      planError,
+      clearPlanError: () => setPlanError(null),
     }}>
       {children}
     </NetworkContext.Provider>

@@ -30,7 +30,7 @@ type MainTab = 'manual-markdown' | 'ai';
 type FormTab = 'raw' | 'manual';
 
 export const AddNodeModal: React.FC<AddNodeModalProps> = ({ isOpen, onClose }) => {
-  const { nodes, addNode, addLink, graphs, activeGraphId } = useNetwork();
+  const { nodes, addNode, addLink, graphs, activeGraphId, coreNodeId } = useNetwork();
   
   const [targetGraphId, setTargetGraphId] = useState(activeGraphId);
   const [mainTab, setMainTab] = useState<MainTab>('manual-markdown');
@@ -49,6 +49,7 @@ export const AddNodeModal: React.FC<AddNodeModalProps> = ({ isOpen, onClose }) =
   const [aiInputText, setAiInputText] = useState('');
   const [isAILoading, setIsAILoading] = useState(false);
   const [aiResults, setAiResults] = useState<any[] | null>(null);
+  const [aiConsent, setAiConsent] = useState(false);
 
   // Raw data state
   const [rawText, setRawText] = useState('');
@@ -65,9 +66,11 @@ export const AddNodeModal: React.FC<AddNodeModalProps> = ({ isOpen, onClose }) =
   const [phone, setPhone] = useState('');
 
   // New Link setting state
-  const [selectedTargetId, setSelectedTargetId] = useState('현지훈');
+  const [selectedTargetId, setSelectedTargetId] = useState(coreNodeId);
   const [relationshipType, setRelationshipType] = useState('프로젝트 협업');
   const [relationStrength, setRelationStrength] = useState(2);
+
+  useEffect(() => { if (isOpen) setSelectedTargetId(coreNodeId); }, [isOpen, coreNodeId]);
 
   if (!isOpen) return null;
 
@@ -185,6 +188,10 @@ export const AddNodeModal: React.FC<AddNodeModalProps> = ({ isOpen, onClose }) =
   const parseTextWithAI = async () => {
     if (!aiInputText.trim()) {
       setErrorMsg('분석할 인력 및 관계 설명 글을 작성해 주세요.');
+      return;
+    }
+    if (!aiConsent) {
+      setErrorMsg('AI 처리 안내를 확인하고 동의해주세요.');
       return;
     }
     setErrorMsg('');
@@ -698,16 +705,21 @@ export const AddNodeModal: React.FC<AddNodeModalProps> = ({ isOpen, onClose }) =
                   <textarea
                     value={aiInputText}
                     onChange={(e) => setAiInputText(e.target.value)}
-                    placeholder={`[자연어 입력 작성 예시]\n배소혜는 부산대 석사이고 우주관광에 관심 많아. 실행력이 높고 나(현지훈)랑 해커톤 같이 했어. 연락처는 010-1234-5678. 하민세는 컴공 전공이고 인공지능 쪽 탑이야. 영어 잘하고, 하민세랑 배소혜는 서로 예전에 스터디도 진행하고 아는 사이야.`}
+                    placeholder={`[자연어 입력 작성 예시]\n배소혜는 부산대 석사이고 우주관광에 관심이 많아. 실행력이 높고 나(${coreNodeId})와 해커톤을 같이 했어. 연락처는 당사자가 제공에 동의한 경우에만 입력해.`}
                     rows={8}
                     className="w-full bg-toss-bg dark:bg-zinc-900 rounded-2xl px-4 py-3.5 text-[12.5px] border border-toss-border dark:border-zinc-800 focus:outline-none focus:ring-2 focus:ring-toss-blue/20 text-toss-text dark:text-zinc-200 leading-relaxed placeholder-slate-400 dark:placeholder-zinc-650"
                   />
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300 cursor-pointer">
+                    <input type="checkbox" checked={aiConsent} onChange={e => setAiConsent(e.target.checked)} className="mt-0.5" />
+                    <span>입력 내용이 AI 분석 제공자에게 일시 전송됩니다. 당사자의 동의를 받은 정보만 입력하고 주민번호·계좌·건강정보 등 민감정보는 제거했습니다.</span>
+                  </label>
 
                   <div className="flex items-center justify-end gap-2 pt-4 border-t border-toss-border dark:border-zinc-800">
                     <button
                       type="button"
                       onClick={onClose}
-                      disabled={isAILoading}
+                      disabled={isAILoading || !aiConsent}
                       className="px-5 py-2.5 text-toss-sub-text dark:text-zinc-400/80 text-[13px] font-bold hover:bg-toss-bg dark:hover:bg-zinc-800 rounded-xl transition-all cursor-pointer"
                     >
                       닫기

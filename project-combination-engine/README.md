@@ -1,20 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Project Combination Engine
 
-# Run and deploy your AI Studio app
+로그인 기반으로 개인 인적 네트워크를 구성하고 분석하는 MVP입니다.
 
-This contains everything you need to run your app locally.
+## 로컬 실행
 
-View your app in AI Studio: https://ai.studio/apps/3640afaa-a89e-4b6b-93ce-442548f5dc85
+1. Node.js 20 이상을 준비합니다.
+2. `npm install`을 실행합니다.
+3. `.env.example`을 `.env.local`로 복사하고 값을 설정합니다.
+4. `npm run dev`를 실행한 뒤 `http://localhost:3000`을 엽니다.
 
-## Run Locally
+## 요금제
 
-**Prerequisites:**  Node.js
+- Free (기본, 월 ₩0): 네트워크 2개, 네트워크당 25명, AI 분석 월 10회
+- Pro (월 ₩9,900): 네트워크 100개, 네트워크당 1,000명, AI 분석 월 300회
 
+`PRO_CHECKOUT_URL`에 사용 중인 결제 서비스의 호스팅 결제 링크를 넣으면 Pro 업그레이드 버튼이 연결됩니다. 결제 서비스는 결제 시작·갱신·해지 시 `/api/billing/webhook`에 `Authorization: Bearer <BILLING_WEBHOOK_SECRET>` 헤더와 `{ "email": "가입 이메일", "active": true|false }` 본문을 전송하도록 연결합니다. 실제 공급자의 서명 검증 형식이 다르면 이 어댑터만 해당 공급자에 맞게 바꾸면 됩니다.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 개인정보 및 운영 보안
+
+- 비밀번호는 scrypt로 해시되며 원문을 저장하지 않습니다.
+- 인물, 연락처, 관계 데이터는 사용자별 파일에 AES-256-GCM으로 암호화되어 저장됩니다.
+- 운영 환경에서는 `DATA_ENCRYPTION_KEY`를 반드시 안전한 비밀 저장소에서 주입해야 합니다. 키를 바꾸면 기존 데이터를 복호화할 수 없습니다.
+- 운영 서비스는 HTTPS 뒤에서 실행해야 합니다. 세션 쿠키는 운영 환경에서 Secure, HttpOnly, SameSite=Strict로 발급됩니다.
+- 현재 세션 저장소는 단일 서버용 메모리 방식입니다. 다중 서버 배포 전에는 Redis 같은 공유 세션 저장소로 교체해야 합니다.
+- AI 분석에는 외부 AI 제공자 전송 동의가 필요합니다. 민감정보를 입력하지 않도록 사용자에게 안내합니다.
+
+회원 탈퇴 시 계정과 암호화 저장소는 즉시 삭제됩니다. 실제 출시 전에는 개인정보처리방침, 이용약관, 보유·파기 정책, 결제 웹훅 검증을 사업 상황에 맞춰 확정하세요.

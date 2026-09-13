@@ -11,6 +11,9 @@ import { DataStudio } from './components/DataStudio';
 import { AddNodeModal } from './components/AddNodeModal';
 import { BottomSheet } from './components/BottomSheet';
 import { GraphManager } from './components/GraphManager';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthScreen } from './components/AuthScreen';
+import { AccountModal } from './components/AccountModal';
 import { 
   Users, 
   Share2, 
@@ -29,10 +32,14 @@ function MainAppShell() {
     theme, 
     toggleTheme, 
     nodes, 
-    links 
+    links,
+    planError,
+    clearPlanError
   } = useNetwork();
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-toss-bg text-toss-text dark:bg-zinc-950 dark:text-zinc-200 font-sans antialiased transition-colors duration-300 flex flex-col pb-20 sm:pb-0">
@@ -64,7 +71,7 @@ function MainAppShell() {
           </div>
         </div>
 
-        {/* Right controller buttons with Admin profile */}
+        {/* Right-side account controls */}
         <div className="flex items-center gap-5">
           
           {/* Active Network Selector Dropdown */}
@@ -91,16 +98,16 @@ function MainAppShell() {
             {theme === 'light' ? <Moon className="w-4.5 h-4.5" /> : <Sun className="w-4.5 h-4.5" />}
           </button>
 
-          {/* Corporate Profile block */}
-          <div className="flex items-center gap-3.5 border-l border-toss-border dark:border-zinc-800 pl-4.5">
+          {/* Signed-in profile */}
+          <button onClick={() => setIsAccountOpen(true)} className="flex items-center gap-3.5 border-l border-toss-border dark:border-zinc-800 pl-4.5 cursor-pointer text-left">
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-[10px] text-toss-muted font-bold uppercase tracking-wider">Admin</span>
-              <span className="text-xs font-bold text-toss-text dark:text-zinc-200">현지훈님</span>
+              <span className="text-[10px] text-toss-blue font-bold uppercase tracking-wider">{user?.plan || 'free'}</span>
+              <span className="text-xs font-bold text-toss-text dark:text-zinc-200">{user?.name}님</span>
             </div>
             <div className="w-9 h-9 bg-toss-blue text-white rounded-full border border-white dark:border-zinc-800 shadow-sm flex items-center justify-center font-bold text-xs">
-              나
+              {user?.name?.slice(0, 1) || '나'}
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -165,6 +172,8 @@ function MainAppShell() {
       {/* Modals & Overlay Layers */}
       <AddNodeModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
       <BottomSheet />
+      <AccountModal open={isAccountOpen} onClose={() => setIsAccountOpen(false)} />
+      {planError && <div className="fixed inset-x-4 bottom-6 z-[90] mx-auto max-w-md bg-zinc-900 text-white rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4"><p className="text-xs font-semibold leading-relaxed">{planError}</p><button onClick={() => { clearPlanError(); setIsAccountOpen(true); }} className="shrink-0 px-3 py-2 bg-toss-blue rounded-xl text-xs font-bold cursor-pointer">요금제 보기</button></div>}
       
     </div>
   );
@@ -172,8 +181,15 @@ function MainAppShell() {
 
 export default function App() {
   return (
-    <NetworkProvider>
-      <MainAppShell />
-    </NetworkProvider>
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
+}
+
+function AuthenticatedApp() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-toss-bg dark:bg-zinc-950 flex items-center justify-center text-sm font-bold text-toss-muted">안전한 저장소를 여는 중...</div>;
+  if (!user) return <AuthScreen />;
+  return <NetworkProvider><MainAppShell /></NetworkProvider>;
 }

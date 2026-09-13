@@ -69,7 +69,7 @@ export function parseMarkdownToTalent(text: string): ParsedResult {
           result.phone = val.replace(/['"]/g, '');
         } else if (key === 'connection' || key === '연결' || key === '관계') {
           // Format could be: "이름 (관계타입, 친밀도)" or just "이름"
-          // e.g. "현지훈 (동료, 3)"
+          // e.g. "홍길동 (동료, 3)"
           const connVal = val.replace(/['"]/g, '');
           const connMatch = connVal.match(/^([^\s(]+)\s*(?:\(([^,)]+)(?:\s*,\s*(\d+))?\))?/);
           if (connMatch) {
@@ -173,8 +173,8 @@ export function parseMarkdownToTalent(text: string): ParsedResult {
 /**
  * Returns a template markdown text that the user can copy & paste.
  */
-export function getMarkdownTemplate(targetList: string[] = ['현지훈']): string {
-  const targetName = targetList.includes('현지훈') ? '현지훈' : (targetList[0] || '현지훈');
+export function getMarkdownTemplate(targetList: string[] = ['나']): string {
+  const targetName = targetList[0] || '나';
   return `---
 name: 김동현
 group: Design
@@ -197,6 +197,6 @@ connection: ${targetName} (UX협업, 3)
 
 # Strategic Fit (전략적 적합도)
 - 프로젝트 콤비네이션 엔진의 프론트엔드 모션 개발 파트 및 디자인 시스템 가이드라인 수립에 즉시 투입 가능한 S급 파트너.
-- 현지훈(나)의 전략 기획 능력과 아주 뛰어난 시각적 보완 관계를 형성할 수 있음.
+- ${targetName}(나)의 전략 기획 능력과 뛰어난 시각적 보완 관계를 형성할 수 있음.
 `;
 }
